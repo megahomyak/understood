@@ -20,10 +20,6 @@ impl std::fmt::Debug for Group {
         std::fmt::Debug::fmt(&self.nodes, f)
     }
 }
-enum AfterGroup {
-    End,
-    Closer(Index),
-}
 
 #[derive(Debug)]
 struct Parser<'a> {
@@ -33,6 +29,7 @@ struct Parser<'a> {
     unclosed_openers: Vec<Index>,
     textbuf: String,
     textidx: Index,
+    escaped: bool,
 }
 
 impl<'a> Parser<'a> {
@@ -44,21 +41,41 @@ impl<'a> Parser<'a> {
         c
     }
     fn parse_group(&mut self) -> (Group, AfterGroup) {
-        let mut nodes = vec![];
+        let mut root = Group { nodes: vec![] };
+        let mut overlays = std::collections::LinkedList::new();
+        let mut curlvl = &mut root;
         loop {
             let charidx = self.idx;
-            match self.next() {
-                c @ (Some('(') | Some(')') | None) => {
+            let c = self.next();
+            if let Some(c) = c {
+                if self.escaped {
+                    self.textbuf.push(c);
+                    self.escaped = false;
+                    continue;
+                }
+            }
+            match c {
+                Some('(') | Some(')') | None => {
                     if !self.textbuf.is_empty() {
-                        nodes.push((Node::Text(std::mem::replace(&mut self.textbuf, String::new())), self.textidx));
+                        curlvl.nodes.push((Node::Text(std::mem::replace(&mut self.textbuf, String::new())), self.textidx));
                     }
                     self.textidx = self.idx;
                     match c {
+                        None => break,
+                        Some(')') => {
+                            overlays.pop_back();
+                            match overlays.back_mut() {
+                                None => self.unexpected_closers.push(charidx),
+                                Some(lvl) => {
+                                    curlvl = lvl;
+                                }
+                            }
+                        }
                         None | Some(')') => {
                             return (
-                                Group { nodes },
+                                root,
                                 match c {
-                                    None => AfterGroup::End,
+                                    None => break,
                                     Some(')') => AfterGroup::Closer(charidx),
                                     _ => unreachable!(),
                                 },
@@ -75,7 +92,13 @@ impl<'a> Parser<'a> {
                         _ => unreachable!(),
                     }
                 }
-                Some(c) => self.textbuf.push(c),
+                Some(c) => {
+                    if c == '\\' {
+                        self.escaped = true;
+                    } else {
+                        self.textbuf.push(c);
+                    }
+                }
             }
         }
     }
@@ -98,9 +121,10 @@ fn main() {
         unexpected_closers: vec![],
         unclosed_openers: vec![],
         idx: 0,
-        s: "a))b)c(((def",
+        s: r"a))b)c((\(d\e\\f",
         textidx: 0,
         textbuf: String::new(),
+        escaped: false,
     };
     println!("{:?}", parser.parse());
     println!("{:?}", parser);
