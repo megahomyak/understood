@@ -98,9 +98,10 @@ fn main() {
         unexpected_closers: vec![],
         unclosed_openers: vec![],
         idx: 0,
-        s: "(abc(def()))ghi()jkl",
+        s: "a))b)c(((def",
         textidx: 0,
         textbuf: String::new(),
     };
     println!("{:?}", parser.parse());
+    println!("{:?}", parser);
 }
