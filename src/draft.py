@@ -1,7 +1,7 @@
 root = []
 stack = []
 
-input_ = "abc(def(g()h))i"
+input_ = "abc(def(g()h))i)blah(("
 idx = 0
 
 sbuf = ""
@@ -10,7 +10,7 @@ sbufidx = 0
 unclosed_openers = []
 unexpected_closers = []
 
-def nextiter():
+def nextiter(): # Just some Python convenience
     global idx
     try:
         c = input_[idx]
