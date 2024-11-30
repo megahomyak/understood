@@ -1,36 +1,54 @@
 root = []
 stack = []
+
+input_ = "abc(def(g()h))i"
+idx = 0
+
 sbuf = ""
-iter_ = iter("abc(def(g()h))i")
+sbufidx = 0
+
+unclosed_openers = []
+unexpected_closers = []
+
 def nextiter():
+    global idx
     try:
-        return next(iter_)
-    except StopIteration:
+        c = input_[idx]
+    except IndexError:
         return None
+    else:
+        idx += 1
+        return c
+
 while True:
+    curidx = idx
     c = nextiter()
     if c == "(" or c == ")" or c is None:
         try:
-            top = stack[-1]
+            top = stack[-1][1] # [1] = "take the actual group, not the idx" (which is also in the same tuple)
         except IndexError:
             top = root
         if sbuf != "":
-            top.append(sbuf)
+            top.append((sbufidx, sbuf))
         if c is None:
             break
         sbuf = ""
+        sbufidx = idx
         if c == "(":
             new = []
-            top.append(new)
-            stack.append(new)
+            # Alloc memory for (curidx, new) here
+            top.append((curidx, new))
+            stack.append((curidx, new))
         elif c == ")":
             try:
                 stack.pop()
             except IndexError:
-                pass # Unexpected closer
+                unexpected_closers.append(curidx)
     else:
         sbuf += c
-for node in stack:
-    pass # Unclosed opener
+for groupidx, _group in stack:
+    unclosed_openers.append(groupidx)
+    # Dealloc memory for (curidx, new) here
 
-assert root == ["abc", ["def", ["g", [], "h"]], "i"]
+print(input_)
+print(root)
