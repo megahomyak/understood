@@ -50,5 +50,7 @@ for groupidx, _group in stack:
     unclosed_openers.append(groupidx)
     # Dealloc memory for (curidx, new) here
 
-print(input_)
-print(root)
+print(f"input = {input_}")
+print(f"{root = }")
+print(f"{unclosed_openers = }")
+print(f"{unexpected_closers = }")
