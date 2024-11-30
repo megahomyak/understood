@@ -21,111 +21,93 @@ impl std::fmt::Debug for Group {
     }
 }
 
-#[derive(Debug)]
-struct Parser<'a> {
-    idx: usize,
-    s: &'a str,
+struct Parsed {
+    group: Group,
     unexpected_closers: Vec<Index>,
     unclosed_openers: Vec<Index>,
-    textbuf: String,
-    textidx: Index,
-    escaped: bool,
 }
 
-impl<'a> Parser<'a> {
-    fn next(&mut self) -> Option<char> {
-        let c = unsafe { &self.s.get_unchecked(self.idx..) }.chars().next();
+fn parse(s: &str) -> Parsed {
+    let mut unexpected_closers = vec![];
+    let mut unclosed_openers = vec![];
+    enum GroupNode {
+        Root {
+            group: Group,
+        },
+        Overlay {
+            group: Group,
+            opener: Index,
+            previous: *mut GroupNode,
+        },
+    }
+    impl GroupNode {
+        fn group(&mut self) -> &mut Group {
+            match self {
+                Self::Root { group } => group,
+                Self::Overlay { group, .. } => group,
+            }
+        }
+    }
+    let mut curgroup = Box::into_raw(Box::new(GroupNode::Root {
+        group: Group { nodes: vec![] },
+    }));
+    let mut idx = 0;
+    let mut escaped = false;
+    let mut textbuf = String::new();
+    let mut textidx = 0;
+    loop {
+        let c = unsafe { s.get_unchecked(idx..) }.chars().next();
+        let charidx = idx;
         if let Some(c) = c {
-            self.idx += c.len_utf8();
+            idx += c.len_utf8();
+            if escaped {
+                textbuf.push(c);
+                escaped = false;
+                continue;
+            }
         }
-        c
-    }
-    fn parse_group(&mut self) -> (Group, AfterGroup) {
-        let mut root = Group { nodes: vec![] };
-        let mut overlays = std::collections::LinkedList::new();
-        let mut curlvl = &mut root;
-        loop {
-            let charidx = self.idx;
-            let c = self.next();
-            if let Some(c) = c {
-                if self.escaped {
-                    self.textbuf.push(c);
-                    self.escaped = false;
-                    continue;
+        match c {
+            None | Some(')') | Some('(') => {
+                if !textbuf.is_empty() {
+                    unsafe { curgroup.read() }
+                        .group()
+                        .nodes
+                        .push((Node::Text(textbuf), textidx));
+                    textbuf = String::new();
+                    textidx = idx;
+                }
+                match c {
+                    None => break,
+                    Some(')') => match unsafe { curgroup.read() } {
+                        GroupNode::Root { .. } => unexpected_closers.push(charidx),
+                        GroupNode::Overlay { group, opener, previous } => {
+                            *unsafe { previous.read() }.group() = group;
+                        }
+                    }
                 }
             }
-            match c {
-                Some('(') | Some(')') | None => {
-                    if !self.textbuf.is_empty() {
-                        curlvl.nodes.push((Node::Text(std::mem::replace(&mut self.textbuf, String::new())), self.textidx));
-                    }
-                    self.textidx = self.idx;
-                    match c {
-                        None => break,
-                        Some(')') => {
-                            overlays.pop_back();
-                            match overlays.back_mut() {
-                                None => self.unexpected_closers.push(charidx),
-                                Some(lvl) => {
-                                    curlvl = lvl;
-                                }
-                            }
-                        }
-                        None | Some(')') => {
-                            return (
-                                root,
-                                match c {
-                                    None => break,
-                                    Some(')') => AfterGroup::Closer(charidx),
-                                    _ => unreachable!(),
-                                },
-                            )
-                        }
-                        Some('(') => {
-                            let (group, after) = self.parse_group();
-                            nodes.push((Node::Group(group), charidx));
-                            match after {
-                                AfterGroup::Closer(_idx) => (),
-                                AfterGroup::End => self.unclosed_openers.push(charidx),
-                            }
-                        }
-                        _ => unreachable!(),
-                    }
-                }
-                Some(c) => {
-                    if c == '\\' {
-                        self.escaped = true;
-                    } else {
-                        self.textbuf.push(c);
-                    }
+            Some(c) => {
+                if c == '\\' {
+                    escaped = true;
+                } else {
+                    textbuf.push(c);
                 }
             }
         }
     }
-    fn parse(&mut self) -> Group {
-        let mut root_nodes = vec![];
-        loop {
-            let (group, after) = self.parse_group();
-            root_nodes.extend(group.nodes);
-            match after {
-                AfterGroup::End => break,
-                AfterGroup::Closer(idx) => self.unexpected_closers.push(idx),
+    loop {
+        match unsafe { curgroup.read() } {
+            GroupNode::Overlay { group, opener, previous } => {
+                let mut overlay = curgroup;
             }
         }
-        Group { nodes: root_nodes }
+    }
+    Parsed {
+        group: match unsafe { curgroup.read() } {
+
+        }
     }
 }
 
 fn main() {
-    let mut parser = Parser {
-        unexpected_closers: vec![],
-        unclosed_openers: vec![],
-        idx: 0,
-        s: r"a))b)c((\(d\e\\f",
-        textidx: 0,
-        textbuf: String::new(),
-        escaped: false,
-    };
-    println!("{:?}", parser.parse());
-    println!("{:?}", parser);
 }
