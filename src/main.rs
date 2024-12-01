@@ -1,8 +1,8 @@
-enum Node {
+pub enum NodeKind {
     String(String),
     Group(Group),
 }
-impl std::fmt::Debug for Node {
+impl std::fmt::Debug for NodeKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::String(s) => std::fmt::Debug::fmt(s, f),
@@ -11,9 +11,34 @@ impl std::fmt::Debug for Node {
     }
 }
 
-type Index = usize;
-struct Group {
-    nodes: Vec<(Index, Node)>,
+#[derive(Clone, Copy)]
+pub struct Index {
+    value: usize,
+}
+impl std::fmt::Debug for Index {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("Index { ")?;
+        std::fmt::Debug::fmt(&self.value, f)?;
+        f.write_str(" }")
+    }
+}
+
+pub struct Node {
+    pub idx: Index,
+    pub kind: NodeKind,
+}
+impl std::fmt::Debug for Node {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("(")?;
+        std::fmt::Debug::fmt(&self.idx, f)?;
+        f.write_str(", ")?;
+        std::fmt::Debug::fmt(&self.kind, f)?;
+        f.write_str(")")
+    }
+}
+
+pub struct Group {
+    pub nodes: Vec<Node>,
 }
 impl std::fmt::Debug for Group {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -21,24 +46,25 @@ impl std::fmt::Debug for Group {
     }
 }
 
-struct ParsingResult {
-    root: Group,
-    unexpected_closers: Vec<Index>,
-    unclosed_openers: Vec<Index>,
+#[derive(Debug)]
+pub struct ParsingResult {
+    pub root: Group,
+    pub unexpected_closers: Vec<Index>,
+    pub unclosed_openers: Vec<Index>,
 }
 
-fn parse(input: &str) -> ParsingResult {
-    let mut root = vec![];
+pub fn parse(input: &str) -> ParsingResult {
+    let mut root_nodes = vec![];
     struct Overlay {
         idx: Index,
         group: Group,
     }
-    let mut overlays = vec![];
+    let mut overlays: Vec<Overlay> = vec![];
 
-    let mut idx = 0;
+    let mut idx = Index { value: 0 };
 
     let mut sbuf = String::new();
-    let mut sbufidx = 0;
+    let mut sbufidx = idx;
 
     let mut unclosed_openers = vec![];
     let mut unexpected_closers = vec![];
@@ -47,107 +73,71 @@ fn parse(input: &str) -> ParsingResult {
 
     loop {
         let curidx = idx;
-        let c = unsafe { input.get_unchecked(idx..) }.chars().next();
+        let c = unsafe { input.get_unchecked(idx.value..) }.chars().next();
         if let Some(c) = c {
-            idx += c.len_utf8();
+            idx.value += c.len_utf8();
             if escaped {
                 sbuf.push(c);
                 escaped = false;
                 continue;
             }
         }
-        match c {
-            Some('(') | Some(')') | None => {
-                let mut top = overlays.last_mut().map(|overlay| &mut overlay.group).unwrap_or(&mut root);
-                if !sbuf.is_empty() {
-                    top.push((sbufidx, Node::String(sbuf)));
+
+        if let None | Some('(' | ')') = c {
+            let mut finished_layer = None;
+            if let None | Some(')') = c {
+                finished_layer = overlays.pop();
+                if finished_layer.is_none() && c.is_some() {
+                    unexpected_closers.push(curidx);
                 }
-                match c {
-                    None => break,
-                    _ => (),
-                }
+            }
+            let top = match overlays.last_mut() {
+                Some(overlay) => &mut overlay.group.nodes,
+                None => &mut root_nodes,
+            };
+            if !sbuf.is_empty() {
+                top.push(Node {
+                    kind: NodeKind::String(sbuf),
+                    idx: sbufidx,
+                });
                 sbuf = String::new();
                 sbufidx = idx;
-                match c {
-                    Some('(') => {
-                        let mut new = Box::into_raw(Box::new(Overlay {
-                            idx: 
-                        }));
-                        let mut new = vec![];
-                    },
-                    Some(')') => {},
-                    _ => unreachable!(),
-                }
-            },
-            Some(c) =>
-                if c == '\\' {
-                    escaped = true;
-                } else {
-                    sbuf.push(c);
-                }
-        }
-    }
-
-    let mut curgroup = Box::into_raw(Box::new(GroupNode::Root {
-        group: Group { nodes: vec![] },
-    }));
-    let mut idx = 0;
-    let mut escaped = false;
-    let mut textbuf = String::new();
-    let mut textidx = 0;
-    loop {
-        let c = unsafe { s.get_unchecked(idx..) }.chars().next();
-        let charidx = idx;
-        if let Some(c) = c {
-            idx += c.len_utf8();
-            if escaped {
-                textbuf.push(c);
-                escaped = false;
-                continue;
             }
-        }
-        match c {
-            None | Some(')') | Some('(') => {
-                if !textbuf.is_empty() {
-                    unsafe { curgroup.read() }
-                        .group()
-                        .nodes
-                        .push((Node::Text(textbuf), textidx));
-                    textbuf = String::new();
-                    textidx = idx;
-                }
-                match c {
-                    None => break,
-                    Some(')') => match unsafe { curgroup.read() } {
-                        GroupNode::Root { .. } => unexpected_closers.push(charidx),
-                        GroupNode::Overlay { group, opener, previous } => {
-                            *unsafe { previous.read() }.group() = group;
-                        }
-                    }
+            if let Some(finished_layer) = finished_layer {
+                let opener_idx = finished_layer.idx;
+                top.push(Node {
+                    idx: finished_layer.idx,
+                    kind: NodeKind::Group(finished_layer.group),
+                });
+                if let None = c {
+                    unclosed_openers.push(opener_idx);
+                    continue;
                 }
             }
-            Some(c) => {
-                if c == '\\' {
-                    escaped = true;
-                } else {
-                    textbuf.push(c);
-                }
+            if let None = c {
+                break;
+            }
+            if let Some('(') = c {
+                overlays.push(Overlay {
+                    idx: curidx,
+                    group: Group { nodes: vec![] },
+                })
+            }
+        } else if let Some(c) = c {
+            if c == '\\' {
+                escaped = true;
+            } else {
+                sbuf.push(c);
             }
         }
     }
-    loop {
-        match unsafe { curgroup.read() } {
-            GroupNode::Overlay { group, opener, previous } => {
-                let mut overlay = curgroup;
-            }
-        }
-    }
-    Parsed {
-        group: match unsafe { curgroup.read() } {
-
-        }
+    ParsingResult {
+        unclosed_openers,
+        unexpected_closers,
+        root: Group { nodes: root_nodes },
     }
 }
 
 fn main() {
+    println!("{:?}", parse(r"abc(d\(ef(\\g()h))i)blah(("));
 }
