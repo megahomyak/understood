@@ -54,7 +54,7 @@ pub struct ParsingResult {
 }
 
 pub fn parse(input: &str) -> ParsingResult {
-    let mut root_nodes = vec![];
+    let mut root = Group { nodes: vec![] };
     struct Overlay {
         idx: Index,
         group: Group,
@@ -93,7 +93,7 @@ pub fn parse(input: &str) -> ParsingResult {
             }
             let top = match overlays.last_mut() {
                 Some(overlay) => &mut overlay.group.nodes,
-                None => &mut root_nodes,
+                None => &mut root.nodes,
             };
             if !sbuf.is_empty() {
                 top.push(Node {
@@ -134,6 +134,6 @@ pub fn parse(input: &str) -> ParsingResult {
     ParsingResult {
         unclosed_openers,
         unexpected_closers,
-        root: Group { nodes: root_nodes },
+        root,
     }
 }
