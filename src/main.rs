@@ -1,5 +1,9 @@
 mod parser;
+mod cli;
+mod interpreter;
 
 fn main() {
-    println!("{:?}", parser::parse(r"abc(d\(ef(\\g()h))i)blah(("));
+    loop {
+        interpreter::execute(cli::read());
+    }
 }

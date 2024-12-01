@@ -13,7 +13,7 @@ impl std::fmt::Debug for NodeKind {
 
 #[derive(Clone, Copy)]
 pub struct Index {
-    value: usize,
+    pub value: usize,
 }
 impl std::fmt::Debug for Index {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
