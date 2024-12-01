@@ -1,41 +1,24 @@
 from types import SimpleNamespace as SN
 
-class Object:
-    def __init__(self):
-        self.associations = {}
-    def set(self, k, v):
-        # NOTE: in prod code, make setting the pointer (second arg, "value") to NULL remove the entry
-        self.associations[k] = v
-    def get(self, k):
-        # NOTE: in prod code, if the entry is not found, return null pointer (because a pointer will be returned anyway, so it makes sense to do this little unification)
-        return self.associations[k]
-
-class KeyStorage:
-    def __init__(self):
-        self.free_key = 0
-    def make_new_key(self):
-        new_key = self.free_key
-        self.free_key += 1
-        return new_key
-
 class Executor:
     def __init__(self):
         self.scope = {}
         self.free_key = 0
         self.last_object = create_nothing(display_key)
     def execute(program):
-        for invocation in program.nodes:
+        for invocation in program:
             if isinstance(invocation, list):
-                for command in invocation.nodes:
+                for command in invocation:
                     if isinstance(command, str):
                         self.last_object = self.scope[command]
                     if isinstance(command, list):
                         self.last_object(input_=command, context=SN(
                             scope=self.scope,
+                            make_new_key=self.make_new_key, # TODO: do not pass this in object invocations, only pass this in plugin initialisations
                         ))
 
 def parse(input_):
-    root = SN(nodes=[])
+    root = []
     overlays = []
 
     idx = 0
@@ -70,9 +53,9 @@ def parse(input_):
                     if c is not None:
                         unexpected_closers.append(curidx)
             try:
-                top = overlays[-1].group.nodes
+                top = overlays[-1].group
             except IndexError:
-                top = root.nodes
+                top = root
             if sbuf != "":
                 top.append(SN(value=sbuf, idx=sbufidx))
                 sbuf = ""
@@ -86,7 +69,7 @@ def parse(input_):
             if c is None:
                 break
             if c == "(":
-                overlays.append(SN(idx=curidx, group=SN(nodes=[])))
+                overlays.append(SN(idx=curidx, group=[]))
         else:
             if c == "\\":
                 escaped = True
@@ -114,8 +97,9 @@ def prompt_for_program():
             is_appending = True
 
 def main():
-    program = prompt_for_program()
     executor = Executor()
-    executor.execute(program)
+    while True:
+        program = prompt_for_program()
+        executor.execute(program)
 
 main()
