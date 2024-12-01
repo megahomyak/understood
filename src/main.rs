@@ -3,7 +3,8 @@ mod cli;
 mod interpreter;
 
 fn main() {
+    let mut executor = interpreter::Executor::new();
     loop {
-        interpreter::execute(cli::read());
+        executor.execute(cli::read());
     }
 }
