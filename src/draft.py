@@ -1,7 +1,7 @@
 root = []
-stack = []
+overlays = []
 
-input_ = r"abc(d\(ef(\\g()h))i)blah((" + "\\"
+input_ = r"abc(d\(ef(\\g()h))i)blah(("
 idx = 0
 
 sbuf = ""
@@ -30,34 +30,36 @@ while True:
         escaped = False
         continue
     if c == "(" or c == ")" or c is None:
+        newgroup = None
+        if c == ")" or c is None:
+            try:
+                newgroup = overlays.pop()
+            except IndexError:
+                if c is not None:
+                    unexpected_closers.append(curidx)
         try:
-            top = stack[-1][1] # [1] = "take the actual group, not the idx" (which is also in the same tuple)
+            top = overlays[-1][1] # [1] = group
         except IndexError:
             top = root
         if sbuf != "":
             top.append((sbufidx, sbuf))
+            sbuf = ""
+            sbufidx = idx
+        if newgroup is not None:
+            groupidx = newgroup[0] # [0] = idx
+            top.append(newgroup)
+            if c is None:
+                unclosed_openers.append(groupidx)
+                continue
         if c is None:
             break
-        sbuf = ""
-        sbufidx = idx
         if c == "(":
-            new = []
-            # Alloc memory for (curidx, new) here
-            top.append((curidx, new))
-            stack.append((curidx, new))
-        elif c == ")":
-            try:
-                stack.pop()
-            except IndexError:
-                unexpected_closers.append(curidx)
+            overlays.append((curidx, []))
     else:
         if c == "\\":
             escaped = True
         else:
             sbuf += c
-for groupidx, _group in stack:
-    unclosed_openers.append(groupidx)
-    # Dealloc memory for (curidx, new) here
 
 print(f"input = {input_}")
 print(f"{root = }")
