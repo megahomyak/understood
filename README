@@ -1,0 +1,21 @@
+Objects are just mappings of str to void pointer
+
+CURRENTLY: strings that are used on objects are not mapped at all, and if there's a name collision, there's nothing that can be done
+
+LATER: make a way to map certain strings to certain other strings for specific libraries to avoid name collisions
+
+EXAMPLE OF IT GOING WRONG:
+* Lib1 wants lib3
+* Lib2 wants lib3
+...but they mean a different library
+
+{{{
+HOW MAPPING MAY WORK:
+import lib1 -- import w/o mapping
+import lib1 mapping {lib3 -> lib3_author} -- import w/ mapping
+
+WHY THIS WILL WORK:
+Each library's author will distinguish the library's dependencies themselves, which will lead to all dependencies having unique names within one library. Thus it will be possible to remap these unique names to other names within the current library, which will make it possible to resolve any conflicts between any libraries
+}}}
+
+=====
