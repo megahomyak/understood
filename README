@@ -15,7 +15,7 @@ import lib1 -- import w/o mapping
 import lib1 mapping {lib3 -> lib3_author} -- import w/ mapping
 
 WHY THIS WILL WORK:
-Each library's author will distinguish the library's dependencies themselves, which will lead to all dependencies having unique names within one library. Thus it will be possible to remap these unique names to other names within the current library, which will make it possible to resolve any conflicts between any libraries
+Each dependency's author will distinguish the dependency's dependencies themselves, which will lead to all subdependencies having unique names within the dependency. Thus it will be possible to remap these unique names to other names within the current program, which will make it possible to resolve any conflicts between any dependencies
 }}}
 
 =====
