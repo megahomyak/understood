@@ -3,7 +3,12 @@ from types import SimpleNamespace as SN
 def parse(inp):
     def parsell(unc, unx, inp):
         stack = [(0, [])]
+        escaped = False
         for i, c in enumerate(inp):
+            if escaped:
+                if c in "()\\":
+                    stack[-1][1].append((i, "\\"))
+                stack[-1][1].append((i, c))
             if c == "(":
                 new = (i, [])
                 stack[-1][1].append(new)
@@ -13,6 +18,8 @@ def parse(inp):
                     unx.append(i)
                 else:
                     stack.pop()
+            elif c == "\\":
+                escaped = True
             else:
                 stack[-1][1].append((i, c))
         while len(stack) != 1:
