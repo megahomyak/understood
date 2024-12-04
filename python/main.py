@@ -40,6 +40,8 @@ def parse(input_):
         else:
             idx += 1
             if escaped:
+                if not (c == "(" or c == ")" or c == "\\"):
+                    sbuf += "\\"
                 sbuf += c
                 escaped = False
                 continue
