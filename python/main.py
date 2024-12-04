@@ -1,107 +1,48 @@
-from types import SimpleNamespace as SN
+def parsell(unc, unx, inp):
+    stack = [(0, [])]
+    for i, c in enumerate(inp):
+        if c == "(":
+            new = (i, [])
+            stack[-1][1].append(new)
+            stack.append(new)
+        elif c == ")":
+            if len(stack) == 1:
+                unx.append(i)
+            else:
+                stack.pop()
+        else:
+            stack[-1][1].append((i, c))
+    while len(stack) != 1:
+        unc.append(stack.pop()[0])
+    return stack[0][1]
 
-class Executor:
-    def __init__(self):
-        self.scope = {}
-        self.free_key = 0
-        self.last_object = create_nothing(display_key)
-    def execute(program):
-        for invocation in program:
-            if isinstance(invocation, list):
-                for command in invocation:
-                    if isinstance(command, str):
-                        self.last_object = self.scope[command]
-                    if isinstance(command, list):
-                        self.last_object(input_=command, context=SN(
-                            scope=self.scope,
-                            make_new_key=self.make_new_key, # TODO: do not pass this in object invocations, only pass this in plugin initialisations
-                        ))
-
-def parse(input_):
-    root = []
-    overlays = []
-
-    idx = 0
-
+def prettify(parsed_inp):
     sbuf = ""
     sbufidx = 0
-
-    unclosed_openers = []
-    unexpected_closers = []
-
-    escaped = False
-
-    while True:
-        curidx = idx
-        try:
-            c = input_[idx]
-        except IndexError:
-            c = None
-        else:
-            idx += 1
-            if escaped:
-                if not (c == "(" or c == ")" or c == "\\"):
-                    sbuf += "\\"
-                sbuf += c
-                escaped = False
-                continue
-
-        if c is None or c == "(" or c == ")":
-            finished_layer = None
-            if c is None or c == ")":
-                try:
-                    finished_layer = overlays.pop()
-                except IndexError:
-                    if c is not None:
-                        unexpected_closers.append(curidx)
-            try:
-                top = overlays[-1].group
-            except IndexError:
-                top = root
-            if sbuf != "":
-                top.append(SN(value=sbuf, idx=sbufidx))
-                sbuf = ""
+    pretty = []
+    for idx, layer in parsed_inp:
+        if isinstance(layer, str):
+            if not sbuf:
                 sbufidx = idx
-            if finished_layer is not None:
-                opener_idx = finished_layer.idx
-                top.append(SN(idx=finished_layer.idx, value=finished_layer.group))
-                if c is None:
-                    unclosed_openers.append(opener_idx)
-                    continue
-            if c is None:
-                break
-            if c == "(":
-                overlays.append(SN(idx=curidx, group=[]))
+            sbuf += layer
         else:
-            if c == "\\":
-                escaped = True
-            else:
-                sbuf += c
-    return SN(
-        unclosed_openers=unclosed_openers,
-        unexpected_closers=unexpected_closers,
-        root=root,
-    )
+            if sbuf:
+                pretty.append((sbufidx, sbuf))
+                sbuf = ""
+            pretty.append((idx, prettify(layer)))
+    if sbuf:
+        pretty.append((sbufidx, sbuf))
+    return pretty
 
-def prompt_for_program():
-    progbuf = ""
-    is_appending = False
-    while True:
-        prompt = ("+" if is_appending else ">") + " "
-        progbuf += input(prompt) + "\n"
-        res = parse(progbuf)
-        if not res.unclosed_openers:
-            if res.unexpected_closers:
-                print(f"! Unexpected closers: {res.unexpected_closers}")
-            print("===")
-            return res.root
-        else:
-            is_appending = True
+def parse(inp):
+    unx = []
+    unc = []
+    res = prettify(parsell(unx, unc, inp))
+    return unx, unc, res
 
-def main():
-    executor = Executor()
-    while True:
-        program = prompt_for_program()
-        executor.execute(program)
-
-main()
+print(parse("""introduction (
+    page (
+        image ()
+        description ()
+    )a
+)"""))
