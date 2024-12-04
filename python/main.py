@@ -43,7 +43,7 @@ def parse(inp):
     unx = []
     unc = []
     res = name(prettify(parsell(unx, unc, inp)))
-    return unx, unc, res
+    return SN(unexpected_closers=unx, unclosed_openers=unc, root=res)
 
 print(parse("""introduction (
     page (
