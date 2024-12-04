@@ -1,3 +1,5 @@
+from types import SimpleNamespace as SN
+
 def parsell(unc, unx, inp):
     stack = [(0, [])]
     for i, c in enumerate(inp):
@@ -34,10 +36,16 @@ def prettify(parsed_inp):
         pretty.append((sbufidx, sbuf))
     return pretty
 
+def name(prettified):
+    named = []
+    for idx, layer in prettified:
+        named.append(SN(idx=idx, value=layer if isinstance(layer, str) else name(layer)))
+    return named
+
 def parse(inp):
     unx = []
     unc = []
-    res = prettify(parsell(unx, unc, inp))
+    res = name(prettify(parsell(unx, unc, inp)))
     return unx, unc, res
 
 print(parse("""introduction (
