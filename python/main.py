@@ -18,7 +18,6 @@ def parse(inp):
         while len(stack) != 1:
             unc.append(stack.pop()[0])
         return stack[0][1]
-
     def prettify(parsed_inp):
         sbuf = ""
         sbufidx = 0
@@ -36,7 +35,6 @@ def parse(inp):
         if sbuf:
             pretty.append((sbufidx, sbuf))
         return pretty
-
     def name(prettified):
         named = []
         for idx, layer in prettified:
