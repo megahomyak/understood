@@ -128,7 +128,7 @@ pub fn parse(input: &str) -> ParsingResult {
                         }
                     }
                 }
-            } else if c == '(' {
+            } else {
                 overlays.push(Overlay {
                     idx: curidx,
                     group: Group::empty(),
