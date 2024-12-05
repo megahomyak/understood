@@ -45,6 +45,11 @@ impl std::fmt::Debug for Group {
         std::fmt::Debug::fmt(&self.nodes, f)
     }
 }
+impl Group {
+    pub fn empty() -> Self {
+        Self { nodes: Vec::new() }
+    }
+}
 
 #[derive(Debug)]
 pub struct ParsingResult {
@@ -54,83 +59,88 @@ pub struct ParsingResult {
 }
 
 pub fn parse(input: &str) -> ParsingResult {
-    let mut root = Group { nodes: vec![] };
+    let mut root = Group::empty();
     struct Overlay {
         idx: Index,
         group: Group,
     }
     let mut overlays: Vec<Overlay> = vec![];
 
+    let mut unclosed_openers = vec![];
+    let mut unexpected_closers = vec![];
+
     let mut idx = Index { value: 0 };
+    let mut curidx = idx;
 
     let mut sbuf = String::new();
     let mut sbufidx = idx;
 
-    let mut unclosed_openers = vec![];
-    let mut unexpected_closers = vec![];
-
     let mut escaped = false;
 
     loop {
-        let curidx = idx;
-        let c = unsafe { input.get_unchecked(idx.value..) }.chars().next();
-        if let Some(c) = c {
+        let c = unsafe { input.get_unchecked(idx.value..) }.chars().next().unwrap_or('\0');
+        if c != '\0' {
+            curidx = idx;
             idx.value += c.len_utf8();
             if escaped {
-                sbuf.push(c);
                 escaped = false;
+                if !(c == '(' || c == ')' || c == '\\') {
+                    sbuf.push('\\');
+                }
+                sbuf.push(c);
                 continue;
             }
         }
 
-        if let None | Some('(' | ')') = c {
-            let mut finished_layer = None;
-            if let None | Some(')') = c {
-                finished_layer = overlays.pop();
-                if finished_layer.is_none() && c.is_some() {
-                    unexpected_closers.push(curidx);
-                }
-            }
-            let top = match overlays.last_mut() {
-                Some(overlay) => &mut overlay.group.nodes,
-                None => &mut root.nodes,
-            };
+        if c == ')' || c == '\0' || c == '(' {
             if !sbuf.is_empty() {
-                top.push(Node {
-                    kind: NodeKind::String(sbuf),
+                let top = match overlays.last_mut() {
+                    None => &mut root,
+                    Some(top) => &mut top.group,
+                };
+                top.nodes.push(Node {
                     idx: sbufidx,
+                    kind: NodeKind::String(sbuf),
                 });
-                sbuf = String::new();
                 sbufidx = idx;
+                sbuf = String::new();
             }
-            if let Some(finished_layer) = finished_layer {
-                let opener_idx = finished_layer.idx;
-                top.push(Node {
-                    idx: finished_layer.idx,
-                    kind: NodeKind::Group(finished_layer.group),
-                });
-                if let None = c {
-                    unclosed_openers.push(opener_idx);
-                    continue;
+            if c == ')' || c == '\0' {
+                match overlays.pop() {
+                    None => {
+                        if c == '\0' {
+                            break;
+                        } else {
+                            unexpected_closers.push(curidx);
+                        }
+                    },
+                    Some(old_top) => {
+                        let new_top = match overlays.last_mut() {
+                            None => &mut root,
+                            Some(new_top) => &mut new_top.group,
+                        };
+                        new_top.nodes.push(Node {
+                            idx: old_top.idx,
+                            kind: NodeKind::Group(old_top.group),
+                        });
+                        if c == '\0' {
+                            unclosed_openers.push(old_top.idx);
+                        }
+                    }
                 }
-            }
-            if let None = c {
-                break;
-            }
-            if let Some('(') = c {
+            } else if c == '(' {
                 overlays.push(Overlay {
                     idx: curidx,
-                    group: Group { nodes: vec![] },
-                })
+                    group: Group::empty(),
+                });
             }
-        } else if let Some(c) = c {
-            if c == '\\' {
-                escaped = true;
-            } else {
-                sbuf.push(c);
-            }
+        } else if c == '\\' {
+            escaped = true;
+        } else {
+            sbuf.push(c);
         }
     }
+
     ParsingResult {
         unclosed_openers,
         unexpected_closers,
