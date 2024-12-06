@@ -14,18 +14,23 @@ enum Result {
 };
 
 /*
-Memory layout:
-[unclosed_openers]
-[unexpected_closers]
-- just simple arrays, only need the length and it's easily retrievable
-root+root length: a group of the specified length (an array of Node) (=Group Node, just not in-place)
-Node is: {type, idx, ptr}
-Type=text: {first char, rest of chars until '\0'}
-Type=group: {len (size_t), [Node]}
+STAGE 1:
+OUTPUT:
+* How many groups are there
+* How deep can the stack go
 
-computation of lengths of text and groups (that is, simply indexes: the post-end index for text and the post-end for groups or something similar) using an array where every next item is a new Node; while computing that, use a stack where store pointers to groups where you descend. I can probably potentially just store pointers to beginnings as well, just so that I won't even have to scan anything later
+STAGE 2:
+REQUIREMENTS:
+* How many groups are there
+* How deep can the stack go
+OUTPUT:
+* How long each group is (separately: root node, overlays)
 
-there is a way to get the length of every item just by looking at its neighbors (and their neighbors, and so on - recursively and going to the very end of every group) and the length of the overall memory allocated for the parsing result (given that it's exactly the right amount), but that's gonna be costly asf, so I'm not doing it here
+STAGE 3:
+REQUIREMENTS:
+* How long each group is (separately: root node, overlays)
+OUTPUT:
+* The finished tree (with text lengths gathered directly from the input string)
 */
 enum Result parse(struct ParsingResult* parsing_result, char* input) {
     /* Stage 1 */
