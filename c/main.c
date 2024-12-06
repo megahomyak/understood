@@ -67,26 +67,60 @@ enum Result parse(struct ParsingResult* parsing_result, char* input) {
                 }
             }
             continue;
-        } else if (c == '\\') {
-            escaped = true;
-        } else {
-            ++sbufsize;
-        }
+        } else if (c == '\\') escaped = true;
+        else ++sbufsize;
         ++idx;
     }
     /* Stage 2 */
+    size_t overlays_size = max_overlay_level * sizeof(size_t*) + nodes_amount * sizeof(size_t);
+    void* overlays;
+    void* node_lengths;
+    if (overlays_size != 0) {
+        overlays = malloc(overlays_size);
+        if (overlays == NULL) return FAILURE;
+        node_lengths = overlays + max_overlay_level * sizeof(size_t*);
+    }
+    size_t root_length = 0;
     idx = 0;
     escaped = false;
-    void* overlays = malloc(max_overlay_level * sizeof(size_t*) + nodes_amount * sizeof(size_t));
-    if (overlays == NULL) {
-        return FAILURE;
-    }
-    void* node_lengths = overlays + max_overlay_level * sizeof(size_t*);
+    unclosed_openers_count = 0;
     for (;;) {
         c = input[idx];
-        if (c == '\0') break;
+        if (escaped && c != '\0') {
+            escaped = false;
+            if (!(c == '(' || c == ')' || c == '\\')) {
+                ++sbufsize;
+            }
+            ++sbufsize;
+            continue;
+        }
+        if (c == '\0' || c == '(' || c == ')') {
+            if (sbufsize != 0) {
+                ++nodes_amount;
+                sbufsize = 0;
+            }
+            if (c == '\0') break;
+            if (c == '(') {
+                ++nodes_amount;
+                ++unclosed_openers_count;
+                if (unclosed_openers_count > max_overlay_level) {
+                    max_overlay_level = unclosed_openers_count;
+                }
+            } else {
+                if (unclosed_openers_count == 0) {
+                    ++unexpected_closers_count;
+                } else {
+                    --unclosed_openers_count;
+                }
+            }
+            continue;
+        } else if (c == '\\') escaped = true;
+        else ++sbufsize;
+        ++idx;
     }
-    free(overlays);
+    if (overlays_size != 0) {
+        free(overlays);
+    }
     /* Stage 3 */
     return SUCCESS;
 }
