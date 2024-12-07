@@ -53,11 +53,14 @@ enum Result parse(struct ParsingResult* parsing_result, char* input) {
     /* Stage 2 */
     size_t root_length = 0;
     size_t* overlay_lengths;
+    void** stack;
     {
-        size_t** stack;
+        size_t cur_overlay;
         if (maxstack != 0) {
             overlay_lengths = malloc(overlays_amount * sizeof(size_t) + maxstack * sizeof(size_t*));
             if (overlay_lengths == NULL) return FAILURE;
+            memset(overlay_lengths, 0, overlays_amount * sizeof(size_t));
+            cur_overlay = 0;
             stack = (size_t**) &overlay_lengths[overlays_amount];
         }
         size_t idx = 0;
@@ -79,8 +82,10 @@ enum Result parse(struct ParsingResult* parsing_result, char* input) {
                 }
                 if (c == '\0') break;
                 if (c == '(') {
-                    stack[stacklen++] = ;
-                } else if (c == ')') {
+                    if (stacklen == 0) ++root_length;
+                    else (*stack[stacklen - 1])++;
+                    stack[stacklen++] = &overlay_lengths[cur_overlay++];
+                } else {
                     if (stacklen != 0) --stacklen;
                 }
             } else if (c == '\\') {
@@ -92,5 +97,9 @@ enum Result parse(struct ParsingResult* parsing_result, char* input) {
     }
 
     /* Stage 3 */
+
+    // Do shit here
+
     if (maxstack != 0) free(overlay_lengths);
+    return SUCCESS;
 }
