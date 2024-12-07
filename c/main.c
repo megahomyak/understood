@@ -32,15 +32,11 @@ size_t parse(char* input) {
         if (c == '\0' || c == '(' || c == ')') {
             if (currently_inside_text) {
                 currently_inside_text = false;
-                printf("%d %c: %zu", c, c, tree_mem);
                 tree_mem += sizeof(char) + sizeof(struct Node);
-                printf(" -> %zu\n", tree_mem);
             }
             if (c == '\0') break;
             if (c == '(') {
-                printf("%d %c: %zu", c, c, tree_mem);
                 tree_mem += sizeof(struct Group) + sizeof(struct Node);
-                printf(" -> %zu\n", tree_mem);
                 ++overlays_len;
                 if (overlays_len > max_overlays_len) {
                     max_overlays_len = overlays_len;
@@ -51,9 +47,7 @@ size_t parse(char* input) {
                 else --overlays_len;
             }
         } else {
-            printf("%d %c: %zu", c, c, tree_mem);
             tree_mem += sizeof(c);
-            printf(" -> %zu\n", tree_mem);
             currently_inside_text = true;
         }
     }
@@ -68,6 +62,7 @@ size_t parse(char* input) {
 void main(void) {
     showme("%zu", sizeof(struct Node));
     showme("%zu", sizeof(struct Group));
+    showme("%zu", sizeof(size_t));
     parsecheck("", (size_t)0);
     parsecheck("()",
         + sizeof(struct Node)
