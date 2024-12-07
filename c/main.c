@@ -33,7 +33,7 @@ size_t parse(char* input) {
             if (currently_inside_text) {
                 currently_inside_text = false;
                 printf("%d %c: %zu", c, c, tree_mem);
-                tree_mem += sizeof('\0') + sizeof(struct Node);
+                tree_mem += sizeof(char) + sizeof(struct Node);
                 printf(" -> %zu\n", tree_mem);
             }
             if (c == '\0') break;
