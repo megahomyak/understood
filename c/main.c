@@ -20,7 +20,7 @@ struct Group {
 
 #define showme(format, expr) printf("%s = " format "\n", #expr, expr)
 
-void parse(char* input) {
+size_t parse(char* input) {
     size_t tree_mem = 0;
     size_t idx = 0;
     size_t max_overlays_len = 0;
@@ -54,13 +54,10 @@ void parse(char* input) {
     size_t unclosed_openers_count = overlays_len;
     overlays_len = 0;
 
-    showme("%zu", tree_mem);
-    showme("%zu", max_overlays_len);
-    showme("%zu", unexpected_closers_count);
-    showme("%zu", unclosed_openers_count);
+    return tree_mem;
 }
 
-#define parsecheck(s, expectation) printf(#s " - expected to be %zu\n", expectation); parse(s)
+#define parsecheck(s, expectation) {size_t result = parse(s); printf("%s - " #s " - expected %zu, got %zu\n", result == expectation ? "SUCCESS" : "FAILURE", expectation, result);}
 
 void main(void) {
     showme("%zu", sizeof(struct Node));
