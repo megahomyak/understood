@@ -6,12 +6,12 @@ struct Node {
     enum {
         TEXT,
         GROUP,
-    } type;
+    } __attribute__((packed)) type;
     union {
         char* text;
         struct Group* group;
     };
-};
+} __attribute__((packed));
 
 struct Group {
     size_t length;
