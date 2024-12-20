@@ -99,8 +99,30 @@ def und_to_pon(und):
 
 def execute(pon):
     # `init(scope, propgetter: function, propsetter: function) -> None` OR maybe `init(scope, input: str | None, propgetter: function, propsetter: function) -> None`
+    # init(getkey) -> obj # A "key" is a pointer or something similar. This is to avoid dealing with strings all the time, helps prevent abuse of them. Although not as required and can probably be the following
+    # init(get, set) -> obj
+    # fn(scope, input) -> obj
     # `func(scope, input: str) -> None`
     # Scope: (varname, varvalue, next) | None
+    #
+    # import (libname) ()
+    # vs
+    # import (libname)()
+    # vs
+    # import (libname)
+    # The last one seems to be the cleanest
+    #
+    # import (libname(params)) <- library names will have to consist of words in this case as well, which I don't want
+    #
+    # Btw, I can just wrap stuff in standard library functions (that will be in prelude):
+    # LIBRARY INTERFACE:
+    # init(get, set) -> obj
+    # fn(scope, input) -> obj
+    #
+    # USER INTERFACE:
+    # `import (libname)` # Calls "init", then "fn" with "()" as input
+    # `raw import (libname) (params)` # Calls "init", then "fn" with "(params)" as input
+    # Basically, `import (a)`=`raw import (a) ()`
     pass
 
 def main():
