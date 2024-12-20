@@ -116,8 +116,8 @@ def execute(pon):
     #
     # Btw, I can just wrap stuff in standard library functions (that will be in prelude):
     # LIBRARY INTERFACE:
-    # init(get, set) -> obj
-    # fn(scope, input) -> obj
+    # init(get, set) -> (&ctx, obj)
+    # fn(&ctx, scope, input) -> obj
     #
     # USER INTERFACE:
     # `import (libname)` # Calls "init", then "fn" with "()" as input
