@@ -119,6 +119,11 @@ def execute(pon):
     # init(get, set) -> (&ctx, obj)
     # fn(&ctx, scope, input) -> obj
     #
+    # OR, EVEN BETTER LIBRARY INTERFACE:
+    # init(callerctx) -> (&thisctx, obj)
+    # fn(&thisctx, scope, input) -> obj
+    # -- The library author will pull everything like this: `let thisthingy = request(callerctx, "thisthingy");`. `callerctx` should probably live only for the duration of the init function, just so that as much as possible will be able to be mocked. Maybe there will be a static array of strings somewhere in the library, just so that the list of required stuff will be really easy to access, and on the init of that library there will just be a passed in array of pointers to the requested things (so new `init`=`init([deppointers]) -> (&ctx, obj)`, and a new interface method: `getdeps() -> [str]`)
+    #
     # USER INTERFACE:
     # `import (libname)` # Calls "init", then "fn" with "()" as input
     # `raw import (libname) (params)` # Calls "init", then "fn" with "(params)" as input
